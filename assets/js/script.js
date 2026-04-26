@@ -274,7 +274,6 @@ if (web3Form) {
     }
 
     const submitBtn = $('button[type="submit"]', web3Form);
-    const prevText = submitBtn ? submitBtn.textContent : '';
     if (submitBtn) submitBtn.disabled = true;
 
     try {
@@ -306,7 +305,6 @@ if (web3Form) {
       );
     } finally {
       if (submitBtn) submitBtn.disabled = false;
-      if (submitBtn && prevText) submitBtn.textContent = prevText;
     }
   });
 }
