@@ -3,6 +3,13 @@
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
+// Block Ctrl+S / Cmd+S save shortcut
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+    e.preventDefault();
+  }
+});
+
 // Mobile nav
 const navToggle = $('[data-nav-toggle]');
 const navLinks = $('[data-nav-links]');
