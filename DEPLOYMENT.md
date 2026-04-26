@@ -1,56 +1,25 @@
-# Serverless Contact Setup
+# Static Site Deployment
 
-This project now sends contact form submissions to a serverless endpoint at `/api/contact`.
+This is a fully static portfolio site. It can be hosted on any static hosting service such as **GitHub Pages**, **Netlify**, **Vercel (static)**, or **Cloudflare Pages**.
 
-If your frontend is hosted on GitHub Pages and backend is on Vercel, set `data-api-url` on the contact form to your deployed Vercel endpoint, for example:
+## Contact Form
 
-```html
-<form ... action="/api/contact" data-api-url="https://your-project.vercel.app/api/contact">
-```
+The contact form submits directly to **Web3Forms** from the browser — no backend or serverless function is required.
 
-## 1) Deploy to Vercel
-
-This repository includes a Vercel serverless function:
-- `api/contact.js`
-
-## 2) Configure Environment Variables in Vercel
-
-Set these in your Vercel project settings:
-
-- `WEB3FORMS_ACCESS_KEY` (required)
-- `TURNSTILE_SECRET_KEY` (optional but recommended)
-
-## 3) Configure Turnstile Site Key in Frontend (Optional)
-
-In `index.html`, set `data-turnstile-site-key` on the form:
+The form already includes the required access key:
 
 ```html
-<form ... data-turnstile-site-key="YOUR_TURNSTILE_SITE_KEY">
+<input type="hidden" name="access_key" value="6b12563a-c69c-4923-ac9b-a1033947ef98">
 ```
 
-If left empty, CAPTCHA is disabled on the frontend.
+If you ever need to rotate the key, update the `value` above in `index.html` and generate a new key at [web3forms.com](https://web3forms.com/).
 
-## 4) Rate Limiting
+## Deploy to GitHub Pages
 
-The API includes an in-memory per-IP rate limit:
-- 5 requests per minute
+1. Push the repository to GitHub.
+2. Go to **Settings → Pages**.
+3. Select the branch you want to publish (usually `main`).
+4. Your site will be live at `https://<username>.github.io/<repo>/`.
 
-Note: in-memory limits are best-effort for serverless environments and may vary across instances.
+No build step or environment variables are needed.
 
-## 5) Local Development
-
-For local testing, add variables to `.env.local` (not committed), then run via Vercel CLI.
-
-```bash
-vercel dev
-```
-
-## 6) Security Notes
-
-- The Web3Forms key is now server-side only.
-- Honeypot and basic validation are enabled.
-- Optional Turnstile verification is enforced when `TURNSTILE_SECRET_KEY` is configured.
-
-## 7) Cross-origin support
-
-The contact API includes CORS handling and OPTIONS preflight support so your GitHub Pages frontend can call your Vercel backend.

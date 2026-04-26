@@ -477,8 +477,9 @@
 
           <div class="card">
             <h3 class="card-title">Quick message</h3>
-            <form class="form" action="/api/contact" method="POST" data-web3forms data-turnstile-site-key="" data-api-url="https://smit-bhuva-github-io.vercel.app/api/contact">
+            <form class="form" action="https://api.web3forms.com/submit" method="POST" data-web3forms>
               <input type="checkbox" name="botcheck" class="sr-only" tabindex="-1" autocomplete="off">
+              <input type="hidden" name="access_key" value="6b12563a-c69c-4923-ac9b-a1033947ef98">
               <input type="hidden" name="subject" value="New portfolio message">
 
               <div class="form-popup" data-form-popup hidden aria-live="polite" role="status"></div>
@@ -497,8 +498,6 @@
                 <span class="field-label">Message</span>
                 <textarea class="input textarea" name="message" placeholder="What would you like to discuss?" required></textarea>
               </label>
-
-              <div class="turnstile-wrap" data-turnstile-container hidden aria-live="polite"></div>
 
               <button class="btn btn-primary" type="submit">
                 <ion-icon name="paper-plane-outline" aria-hidden="true"></ion-icon>

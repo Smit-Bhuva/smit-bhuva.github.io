@@ -211,9 +211,7 @@ const web3Form = $('[data-web3forms]');
 const popup = $('[data-form-popup]');
 let popupHideTimer = null;
 const submitCooldownMs = 20 * 1000;
-const turnstileScriptSrc = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
-let turnstileToken = '';
-let turnstileWidgetId = null;
+
 
 const setPopup = (kind, title, message) => {
   if (!popup) return;
@@ -253,65 +251,7 @@ const clearPopup = () => {
 // Ensure hidden on initial load
 clearPopup();
 
-const loadTurnstileScript = () => {
-  const existing = document.querySelector(`script[src="${turnstileScriptSrc}"]`);
-  if (existing) {
-    return new Promise((resolve, reject) => {
-      if (window.turnstile) {
-        resolve();
-        return;
-      }
-      existing.addEventListener('load', () => resolve(), { once: true });
-      existing.addEventListener('error', () => reject(new Error('Turnstile script failed to load.')), { once: true });
-    });
-  }
-
-  return new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = turnstileScriptSrc;
-    script.async = true;
-    script.defer = true;
-    script.addEventListener('load', () => resolve(), { once: true });
-    script.addEventListener('error', () => reject(new Error('Turnstile script failed to load.')), { once: true });
-    document.head.appendChild(script);
-  });
-};
-
-const setupTurnstile = async () => {
-  if (!web3Form) return;
-
-  const siteKey = (web3Form.dataset.turnstileSiteKey || '').trim();
-  const container = $('[data-turnstile-container]', web3Form);
-  if (!siteKey || !container) {
-    return;
-  }
-
-  try {
-    await loadTurnstileScript();
-    if (!window.turnstile) return;
-
-    container.hidden = false;
-    turnstileWidgetId = window.turnstile.render(container, {
-      sitekey: siteKey,
-      theme: 'auto',
-      callback: (token) => {
-        turnstileToken = token;
-      },
-      'expired-callback': () => {
-        turnstileToken = '';
-      },
-      'error-callback': () => {
-        turnstileToken = '';
-      },
-    });
-  } catch (err) {
-    console.error(err);
-    container.hidden = true;
-  }
-};
-
 if (web3Form) {
-  setupTurnstile();
 
   web3Form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -333,90 +273,16 @@ if (web3Form) {
       return;
     }
 
-    const siteKey = (web3Form.dataset.turnstileSiteKey || '').trim();
-    if (siteKey && !turnstileToken) {
-      setPopup(
-        'error',
-        'Verification required',
-        'Please complete the verification challenge before submitting.'
-      );
-      return;
-    }
-
     const submitBtn = $('button[type="submit"]', web3Form);
     const prevText = submitBtn ? submitBtn.textContent : '';
     if (submitBtn) submitBtn.disabled = true;
 
     try {
-      const configuredApiUrl = String(web3Form.dataset.apiUrl || '').trim();
-      const fallbackAction = String(web3Form.getAttribute('action') || '').trim();
-      const defaultEndpoint = configuredApiUrl || fallbackAction;
-
-      if (!defaultEndpoint) {
-        throw new Error('Contact endpoint is not configured.');
-      }
-
-      const isGitHubPages = window.location.hostname.endsWith('github.io');
-      const isRelativeEndpoint = defaultEndpoint.startsWith('/');
-
-      const endpointCandidates = [];
-      if (configuredApiUrl) {
-        endpointCandidates.push(configuredApiUrl);
-      } else if (isGitHubPages && isRelativeEndpoint) {
-        const host = window.location.hostname;
-        const owner = host.split('.')[0];
-        const repoSlug = host.replace(/\./g, '-');
-        endpointCandidates.push(
-          `https://${repoSlug}.vercel.app${defaultEndpoint}`,
-          `https://${owner}.vercel.app${defaultEndpoint}`
-        );
-      } else {
-        endpointCandidates.push(defaultEndpoint);
-      }
-
       const fd = new FormData(web3Form);
-      const payload = {
-        name: String(fd.get('name') || '').trim(),
-        email: String(fd.get('email') || '').trim(),
-        message: String(fd.get('message') || '').trim(),
-        subject: String(fd.get('subject') || 'New portfolio message').trim(),
-        botcheck: Boolean(fd.get('botcheck')),
-        turnstileToken: turnstileToken || null,
-      };
-
-      let lastError = null;
-      let res = null;
-      for (const endpoint of endpointCandidates) {
-        try {
-          res = await fetch(endpoint, {
-            method: 'POST',
-            body: JSON.stringify(payload),
-            headers: {
-              Accept: 'application/json',
-              'Content-Type': 'application/json',
-            },
-          });
-
-          if (res.ok) {
-            break;
-          }
-
-          const failedData = await res.json().catch(() => ({}));
-          lastError = new Error(failedData.message || `Submission failed (${res.status}) at ${endpoint}.`);
-        } catch (endpointErr) {
-          const msg = endpointErr instanceof Error ? endpointErr.message : `Request failed at ${endpoint}.`;
-          lastError = new Error(msg);
-        }
-      }
-
-      if (!res || !res.ok) {
-        if (!configuredApiUrl && isGitHubPages && isRelativeEndpoint) {
-          throw new Error(
-            `${lastError?.message || 'Unable to reach backend.'} Set data-api-url on the contact form to your exact Vercel API endpoint.`
-          );
-        }
-        throw lastError || new Error('Submission failed.');
-      }
+      const res = await fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        body: fd,
+      });
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.success === false) {
@@ -425,10 +291,6 @@ if (web3Form) {
 
       localStorage.setItem('contact_last_submit_at', String(Date.now()));
       web3Form.reset();
-      turnstileToken = '';
-      if (window.turnstile && turnstileWidgetId !== null) {
-        window.turnstile.reset(turnstileWidgetId);
-      }
       setPopup(
         'success',
         'Message sent',
