@@ -164,42 +164,42 @@
             <h3 class="card-title">What I’m doing</h3>
             <ul class="service-grid">
               <li class="service">
-                <img src="./assets/images/icon-design.svg" alt="" width="28" height="28" loading="lazy">
+                <ion-icon name="bar-chart-outline" aria-hidden="true"></ion-icon>
                 <div>
                   <p class="service-title">Data analysis</p>
                   <p class="service-text">Turning complex data into simple, beautiful & insightful visualizations.</p>
                 </div>
               </li>
               <li class="service">
-                <img src="./assets/images/icon-gis.svg" alt="" width="28" height="28" loading="lazy">
+                <ion-icon name="map-outline" aria-hidden="true"></ion-icon>
                 <div>
                   <p class="service-title">GIS analysis</p>
                   <p class="service-text">Manipulating, analyzing and visualizing spatial data.</p>
                 </div>
               </li>
               <li class="service">
-                <img src="./assets/images/data-science.png" alt="" width="28" height="28" loading="lazy">
+                <ion-icon name="flask-outline" aria-hidden="true"></ion-icon>
                 <div>
                   <p class="service-title">Data science</p>
                   <p class="service-text">Building ML & DL models for real-world problems.</p>
                 </div>
               </li>
               <li class="service">
-                <img src="./assets/images/Manual-Testing.png" alt="" width="28" height="28" loading="lazy">
+                <ion-icon name="search-outline" aria-hidden="true"></ion-icon>
                 <div>
                   <p class="service-title">Manual testing</p>
                   <p class="service-text">Detailed test design, execution, and defect reporting.</p>
                 </div>
               </li>
               <li class="service">
-                <img src="./assets/images/Automation-Testing.png" alt="" width="28" height="28" loading="lazy">
+                <ion-icon name="cog-outline" aria-hidden="true"></ion-icon>
                 <div>
                   <p class="service-title">Automation testing</p>
                   <p class="service-text">Learning Playwright + BDD for fast, consistent QA.</p>
                 </div>
               </li>
               <li class="service">
-                <img src="./assets/images/icon-photo.svg" alt="" width="28" height="28" loading="lazy">
+                <ion-icon name="camera-outline" aria-hidden="true"></ion-icon>
                 <div>
                   <p class="service-title">Mobile photography</p>
                   <p class="service-text">Capturing moments with composition-focused storytelling.</p>
@@ -477,7 +477,7 @@
 
           <div class="card">
             <h3 class="card-title">Quick message</h3>
-            <form class="form" action="/api/contact" method="POST" data-web3forms data-turnstile-site-key="">
+            <form class="form" action="/api/contact" method="POST" data-web3forms data-turnstile-site-key="" data-api-url="">
               <input type="checkbox" name="botcheck" class="sr-only" tabindex="-1" autocomplete="off">
               <input type="hidden" name="subject" value="New portfolio message">
 
@@ -500,7 +500,7 @@
 
               <div class="turnstile-wrap" data-turnstile-container hidden aria-live="polite"></div>
 
-              <button class="btn btn-ghost" type="submit">
+              <button class="btn btn-primary" type="submit">
                 <ion-icon name="paper-plane-outline" aria-hidden="true"></ion-icon>
                 <span>Submit</span>
               </button>

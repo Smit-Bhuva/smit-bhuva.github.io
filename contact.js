@@ -4,6 +4,14 @@ const WINDOW_MS = 60 * 1000;
 const MAX_REQUESTS_PER_WINDOW = 5;
 const ipWindowStore = new Map();
 
+const setCorsHeaders = (req, res) => {
+  const origin = typeof req.headers.origin === 'string' ? req.headers.origin : '*';
+  res.setHeader('Access-Control-Allow-Origin', origin || '*');
+  res.setHeader('Vary', 'Origin');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept');
+};
+
 const json = (res, statusCode, payload) => {
   res.status(statusCode).setHeader('Content-Type', 'application/json; charset=utf-8');
   res.send(JSON.stringify(payload));
@@ -92,6 +100,12 @@ const verifyTurnstile = async ({ secretKey, token, ip }) => {
 };
 
 module.exports = async (req, res) => {
+  setCorsHeaders(req, res);
+
+  if (req.method === 'OPTIONS') {
+    return res.status(204).send('');
+  }
+
   if (req.method !== 'POST') {
     return json(res, 405, { success: false, message: 'Method not allowed.' });
   }

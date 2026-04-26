@@ -340,6 +340,20 @@ if (web3Form) {
     if (submitBtn) submitBtn.disabled = true;
 
     try {
+      const configuredApiUrl = String(web3Form.dataset.apiUrl || '').trim();
+      const fallbackAction = String(web3Form.getAttribute('action') || '').trim();
+      const endpoint = configuredApiUrl || fallbackAction;
+
+      if (!endpoint) {
+        throw new Error('Contact endpoint is not configured.');
+      }
+
+      const isGitHubPages = window.location.hostname.endsWith('github.io');
+      const isRelativeEndpoint = endpoint.startsWith('/');
+      if (isGitHubPages && isRelativeEndpoint && !configuredApiUrl) {
+        throw new Error('Set data-api-url on the contact form to your Vercel API endpoint.');
+      }
+
       const fd = new FormData(web3Form);
       const payload = {
         name: String(fd.get('name') || '').trim(),
@@ -350,7 +364,7 @@ if (web3Form) {
         turnstileToken: turnstileToken || null,
       };
 
-      const res = await fetch(web3Form.action, {
+      const res = await fetch(endpoint, {
         method: 'POST',
         body: JSON.stringify(payload),
         headers: {
@@ -361,7 +375,7 @@ if (web3Form) {
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.success === false) {
-        throw new Error(data.message || 'Submission failed.');
+        throw new Error(data.message || `Submission failed (${res.status}).`);
       }
 
       localStorage.setItem('contact_last_submit_at', String(Date.now()));
@@ -377,10 +391,11 @@ if (web3Form) {
       );
     } catch (err) {
       console.error(err);
+      const details = err instanceof Error ? err.message : 'Please try again in a moment.';
       setPopup(
         'error',
         'Something went wrong',
-        'Please try again in a moment, or use the Email button in the Contact section.'
+        `${details} You can also use the Email button in the Contact section.`
       );
     } finally {
       if (submitBtn) submitBtn.disabled = false;

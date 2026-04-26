@@ -2,6 +2,12 @@
 
 This project now sends contact form submissions to a serverless endpoint at `/api/contact`.
 
+If your frontend is hosted on GitHub Pages and backend is on Vercel, set `data-api-url` on the contact form to your deployed Vercel endpoint, for example:
+
+```html
+<form ... action="/api/contact" data-api-url="https://your-project.vercel.app/api/contact">
+```
+
 ## 1) Deploy to Vercel
 
 This repository includes a Vercel serverless function:
@@ -44,3 +50,7 @@ vercel dev
 - The Web3Forms key is now server-side only.
 - Honeypot and basic validation are enabled.
 - Optional Turnstile verification is enforced when `TURNSTILE_SECRET_KEY` is configured.
+
+## 7) Cross-origin support
+
+The contact API includes CORS handling and OPTIONS preflight support so your GitHub Pages frontend can call your Vercel backend.
