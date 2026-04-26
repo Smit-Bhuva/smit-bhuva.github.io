@@ -677,7 +677,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .form-popup {
   position: fixed;
   right: 16px;
-  bottom: 16px;
+  bottom: 74px;
   width: min(440px, calc(100% - 32px));
   padding: 12px 12px;
   border-radius: var(--radius-md);
