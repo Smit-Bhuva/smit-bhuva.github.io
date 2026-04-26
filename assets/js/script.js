@@ -56,7 +56,10 @@ if (toTop) {
 }
 
 // Projects filter
-const projectFilter = $('[data-project-filter]');
+const projectFilterRoot = $('[data-project-filter-root]');
+const projectFilterTrigger = $('[data-project-filter-trigger]');
+const projectFilterList = $('[data-project-filter-list]');
+const projectFilterOptions = $$('[data-project-filter-list] [data-value]');
 const projects = $$('.project-card[data-category]');
 
 const applyProjectFilter = (value) => {
@@ -68,17 +71,141 @@ const applyProjectFilter = (value) => {
   });
 };
 
-if (projectFilter) {
-  projectFilter.addEventListener('change', (e) => {
-    applyProjectFilter(e.target.value);
+const getActiveFilterOptionIndex = () => {
+  const activeIndex = projectFilterOptions.findIndex((option) => option.classList.contains('is-active'));
+  return activeIndex >= 0 ? activeIndex : 0;
+};
+
+const focusFilterOptionByIndex = (index) => {
+  if (!projectFilterOptions.length) return;
+  const nextIndex = Math.max(0, Math.min(index, projectFilterOptions.length - 1));
+  projectFilterOptions[nextIndex].focus();
+};
+
+const closeCustomProjectFilter = () => {
+  if (!projectFilterRoot || !projectFilterTrigger || !projectFilterList) return;
+  projectFilterRoot.classList.remove('is-open');
+  projectFilterList.hidden = true;
+  projectFilterTrigger.setAttribute('aria-expanded', 'false');
+};
+
+const openCustomProjectFilter = () => {
+  if (!projectFilterRoot || !projectFilterTrigger || !projectFilterList) return;
+  projectFilterRoot.classList.add('is-open');
+  projectFilterList.hidden = false;
+  projectFilterTrigger.setAttribute('aria-expanded', 'true');
+};
+
+if (projectFilterRoot && projectFilterTrigger && projectFilterList && projectFilterOptions.length) {
+  const setCustomProjectFilter = (value) => {
+    const normalized = (value || 'all').toLowerCase();
+    const activeOption = projectFilterOptions.find(
+      (option) => (option.dataset.value || '').toLowerCase() === normalized
+    );
+    if (!activeOption) return;
+
+    projectFilterOptions.forEach((option) => {
+      const selected = option === activeOption;
+      option.classList.toggle('is-active', selected);
+      option.setAttribute('aria-pressed', String(selected));
+    });
+
+    projectFilterTrigger.textContent = activeOption.textContent || 'All';
+    applyProjectFilter(normalized);
+  };
+
+  projectFilterTrigger.addEventListener('click', () => {
+    if (projectFilterList.hidden) {
+      openCustomProjectFilter();
+      focusFilterOptionByIndex(getActiveFilterOptionIndex());
+    } else {
+      closeCustomProjectFilter();
+    }
   });
-  applyProjectFilter(projectFilter.value);
+
+  projectFilterTrigger.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      openCustomProjectFilter();
+      focusFilterOptionByIndex(getActiveFilterOptionIndex());
+    }
+
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      openCustomProjectFilter();
+      focusFilterOptionByIndex(projectFilterOptions.length - 1);
+    }
+  });
+
+  projectFilterOptions.forEach((option) => {
+    option.addEventListener('click', () => {
+      setCustomProjectFilter(option.dataset.value || 'all');
+      closeCustomProjectFilter();
+      projectFilterTrigger.focus();
+    });
+
+    option.addEventListener('keydown', (e) => {
+      const currentIndex = projectFilterOptions.indexOf(option);
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        focusFilterOptionByIndex(currentIndex + 1);
+      }
+
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        focusFilterOptionByIndex(currentIndex - 1);
+      }
+
+      if (e.key === 'Home') {
+        e.preventDefault();
+        focusFilterOptionByIndex(0);
+      }
+
+      if (e.key === 'End') {
+        e.preventDefault();
+        focusFilterOptionByIndex(projectFilterOptions.length - 1);
+      }
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeCustomProjectFilter();
+        projectFilterTrigger.focus();
+      }
+
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        setCustomProjectFilter(option.dataset.value || 'all');
+        closeCustomProjectFilter();
+        projectFilterTrigger.focus();
+      }
+    });
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!projectFilterRoot.contains(e.target)) {
+      closeCustomProjectFilter();
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeCustomProjectFilter();
+      projectFilterTrigger.focus();
+    }
+  });
+
+  setCustomProjectFilter('all');
 }
 
 // Web3Forms submit + popup (success/failure)
 const web3Form = $('[data-web3forms]');
 const popup = $('[data-form-popup]');
 let popupHideTimer = null;
+const submitCooldownMs = 20 * 1000;
+const turnstileScriptSrc = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+let turnstileToken = '';
+let turnstileWidgetId = null;
 
 const setPopup = (kind, title, message) => {
   if (!popup) return;
@@ -118,10 +245,95 @@ const clearPopup = () => {
 // Ensure hidden on initial load
 clearPopup();
 
+const loadTurnstileScript = () => {
+  const existing = document.querySelector(`script[src="${turnstileScriptSrc}"]`);
+  if (existing) {
+    return new Promise((resolve, reject) => {
+      if (window.turnstile) {
+        resolve();
+        return;
+      }
+      existing.addEventListener('load', () => resolve(), { once: true });
+      existing.addEventListener('error', () => reject(new Error('Turnstile script failed to load.')), { once: true });
+    });
+  }
+
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = turnstileScriptSrc;
+    script.async = true;
+    script.defer = true;
+    script.addEventListener('load', () => resolve(), { once: true });
+    script.addEventListener('error', () => reject(new Error('Turnstile script failed to load.')), { once: true });
+    document.head.appendChild(script);
+  });
+};
+
+const setupTurnstile = async () => {
+  if (!web3Form) return;
+
+  const siteKey = (web3Form.dataset.turnstileSiteKey || '').trim();
+  const container = $('[data-turnstile-container]', web3Form);
+  if (!siteKey || !container) {
+    return;
+  }
+
+  try {
+    await loadTurnstileScript();
+    if (!window.turnstile) return;
+
+    container.hidden = false;
+    turnstileWidgetId = window.turnstile.render(container, {
+      sitekey: siteKey,
+      theme: 'auto',
+      callback: (token) => {
+        turnstileToken = token;
+      },
+      'expired-callback': () => {
+        turnstileToken = '';
+      },
+      'error-callback': () => {
+        turnstileToken = '';
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    container.hidden = true;
+  }
+};
+
 if (web3Form) {
+  setupTurnstile();
+
   web3Form.addEventListener('submit', async (e) => {
     e.preventDefault();
     clearPopup();
+
+    const botcheck = $('[name="botcheck"]', web3Form);
+    if (botcheck?.checked) {
+      return;
+    }
+
+    const lastSubmitAt = Number(localStorage.getItem('contact_last_submit_at') || '0');
+    const now = Date.now();
+    if (now - lastSubmitAt < submitCooldownMs) {
+      setPopup(
+        'error',
+        'Please wait',
+        'You just sent a message. Please wait a few seconds before trying again.'
+      );
+      return;
+    }
+
+    const siteKey = (web3Form.dataset.turnstileSiteKey || '').trim();
+    if (siteKey && !turnstileToken) {
+      setPopup(
+        'error',
+        'Verification required',
+        'Please complete the verification challenge before submitting.'
+      );
+      return;
+    }
 
     const submitBtn = $('button[type="submit"]', web3Form);
     const prevText = submitBtn ? submitBtn.textContent : '';
@@ -129,10 +341,22 @@ if (web3Form) {
 
     try {
       const fd = new FormData(web3Form);
+      const payload = {
+        name: String(fd.get('name') || '').trim(),
+        email: String(fd.get('email') || '').trim(),
+        message: String(fd.get('message') || '').trim(),
+        subject: String(fd.get('subject') || 'New portfolio message').trim(),
+        botcheck: Boolean(fd.get('botcheck')),
+        turnstileToken: turnstileToken || null,
+      };
+
       const res = await fetch(web3Form.action, {
         method: 'POST',
-        body: fd,
-        headers: { Accept: 'application/json' },
+        body: JSON.stringify(payload),
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
       });
 
       const data = await res.json().catch(() => ({}));
@@ -140,7 +364,12 @@ if (web3Form) {
         throw new Error(data.message || 'Submission failed.');
       }
 
+      localStorage.setItem('contact_last_submit_at', String(Date.now()));
       web3Form.reset();
+      turnstileToken = '';
+      if (window.turnstile && turnstileWidgetId !== null) {
+        window.turnstile.reset(turnstileWidgetId);
+      }
       setPopup(
         'success',
         'Message sent',
