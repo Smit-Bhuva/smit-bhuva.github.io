@@ -48,11 +48,19 @@ if (yearEl) yearEl.textContent = String(new Date().getFullYear());
 // Back to top (force reliable behavior)
 const toTop = $('[data-to-top]');
 if (toTop) {
+  const updateToTopVisibility = () => {
+    const show = window.scrollY > 10;
+    toTop.classList.toggle('is-visible', show);
+  };
+
   toTop.addEventListener('click', (e) => {
     e.preventDefault();
     window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
     history.replaceState(null, '', '#top');
   });
+
+  window.addEventListener('scroll', updateToTopVisibility, { passive: true });
+  updateToTopVisibility();
 }
 
 // Projects filter
@@ -342,16 +350,28 @@ if (web3Form) {
     try {
       const configuredApiUrl = String(web3Form.dataset.apiUrl || '').trim();
       const fallbackAction = String(web3Form.getAttribute('action') || '').trim();
-      const endpoint = configuredApiUrl || fallbackAction;
+      const defaultEndpoint = configuredApiUrl || fallbackAction;
 
-      if (!endpoint) {
+      if (!defaultEndpoint) {
         throw new Error('Contact endpoint is not configured.');
       }
 
       const isGitHubPages = window.location.hostname.endsWith('github.io');
-      const isRelativeEndpoint = endpoint.startsWith('/');
-      if (isGitHubPages && isRelativeEndpoint && !configuredApiUrl) {
-        throw new Error('Set data-api-url on the contact form to your Vercel API endpoint.');
+      const isRelativeEndpoint = defaultEndpoint.startsWith('/');
+
+      const endpointCandidates = [];
+      if (configuredApiUrl) {
+        endpointCandidates.push(configuredApiUrl);
+      } else if (isGitHubPages && isRelativeEndpoint) {
+        const host = window.location.hostname;
+        const owner = host.split('.')[0];
+        const repoSlug = host.replace(/\./g, '-');
+        endpointCandidates.push(
+          `https://${repoSlug}.vercel.app${defaultEndpoint}`,
+          `https://${owner}.vercel.app${defaultEndpoint}`
+        );
+      } else {
+        endpointCandidates.push(defaultEndpoint);
       }
 
       const fd = new FormData(web3Form);
@@ -364,14 +384,39 @@ if (web3Form) {
         turnstileToken: turnstileToken || null,
       };
 
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        body: JSON.stringify(payload),
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
-      });
+      let lastError = null;
+      let res = null;
+      for (const endpoint of endpointCandidates) {
+        try {
+          res = await fetch(endpoint, {
+            method: 'POST',
+            body: JSON.stringify(payload),
+            headers: {
+              Accept: 'application/json',
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (res.ok) {
+            break;
+          }
+
+          const failedData = await res.json().catch(() => ({}));
+          lastError = new Error(failedData.message || `Submission failed (${res.status}) at ${endpoint}.`);
+        } catch (endpointErr) {
+          const msg = endpointErr instanceof Error ? endpointErr.message : `Request failed at ${endpoint}.`;
+          lastError = new Error(msg);
+        }
+      }
+
+      if (!res || !res.ok) {
+        if (!configuredApiUrl && isGitHubPages && isRelativeEndpoint) {
+          throw new Error(
+            `${lastError?.message || 'Unable to reach backend.'} Set data-api-url on the contact form to your exact Vercel API endpoint.`
+          );
+        }
+        throw lastError || new Error('Submission failed.');
+      }
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.success === false) {

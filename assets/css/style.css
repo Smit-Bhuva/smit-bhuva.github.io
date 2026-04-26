@@ -386,15 +386,15 @@ button, input, textarea, select { font: inherit; color: inherit; }
 }
 .service {
   display: grid;
-  grid-template-columns: 34px 1fr;
-  gap: 12px;
+  grid-template-columns: 40px 1fr;
+  gap: 8px;
   padding: 12px;
   border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--surface) 80%, transparent);
 }
 .service ion-icon {
-  font-size: 24px;
+  font-size: 35px;
   color: color-mix(in srgb, var(--accent) 70%, var(--text));
   opacity: 0.95;
   align-self: start;
@@ -750,6 +750,10 @@ button, input, textarea, select { font: inherit; color: inherit; }
 }
 .footer p { margin: 0; color: var(--muted); }
 .to-top {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 70;
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -758,6 +762,18 @@ button, input, textarea, select { font: inherit; color: inherit; }
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(8px);
+  transition: opacity 160ms ease, transform 160ms ease, visibility 160ms ease, background 160ms ease;
+}
+.to-top.is-visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0);
 }
 .to-top:hover { background: var(--surface-2); }
 .to-top:focus-visible { outline: none; box-shadow: var(--focus); }
